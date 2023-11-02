@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'     
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: macOS-12
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v3
+        with:
+          repository: 'EbrahimTahernejad/xray-mobile'
+          path: 'xray-mobile'
+          
+      - name: Setup Go
+        uses: actions/setup-go@v3.5.0
+        with:
+          go-version: '1.20'
+      
+      - name: Setup Gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
+          
+      - name: Build xcframework
+        run: |
+          cd xray-mobile
+          make ios
+          zip -ry ./build/XRay.xcframework.zip ./build/XRay.xcframework
+          
+      - name: Detect checksum
+        run: |
+          export TEMP=`shasum -a 256 xray-mobile/build/XRay.xcframework.zip`
+          export CHECKSUM=${TEMP:0:64}
+          echo "FILE_CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
+          unset CHECKSUM
+          unset TEMP
+          
+      - name: Update package file
+        run: |
+          echo "// swift-tools-version: 5.7" > Package.swift
+          echo "" >> Package.swift
+          echo "import PackageDescription" >> Package.swift
+          echo "" >> Package.swift
+          echo "let package = Package(" >> Package.swift
+          echo "  name: \"XRay\"," >> Package.swift
+          echo "  platforms: [.iOS(.v12)]," >> Package.swift
+          echo "  products: [" >> Package.swift
+          echo "    .library(name: \"XRay\", targets: [\"XRay\"])" >> Package.swift
+          echo "  ]," >> Package.swift
+          echo "  targets: [" >> Package.swift
+          echo "    .binaryTarget(" >> Package.swift
+          echo "      name: \"XRay\"," >> Package.swift
+          echo "      url: \"https://github.com/EbrahimTahernejad/xray-mobile/releases/download/${{ github.event.inputs.version }}/XRay.xcframework.zip\"," >> Package.swift
+          echo "      checksum: \"${{ env.FILE_CHECKSUM }}\"" >> Package.swift
+          echo "    )" >> Package.swift
+          echo "  ]" >> Package.swift
+          echo ")" >> Package.swift
+          
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: XRay Release ${{ github.event.inputs.version }}
+          commit_user_name: Ebrahim
+          commit_user_email: ebrahimtahernejad@gmail.com
+          tagging_message: ${{ github.event.inputs.version }}
+          file_pattern: 'Package.swift'
+          
+      - name: Upload Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          tag_name: ${{ github.event.inputs.version }}
+          files: xray-mobile/build/XRay.xcframework.zip
