@@ -2,11 +2,18 @@ package XRay
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"runtime/debug"
+	"time"
 
 	_ "github.com/lestar348/xray-core-mobile-wrapper/all_core_packages"
 
+	xrayNet "github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/infra/conf/serial"
 )
@@ -73,4 +80,71 @@ func StartXray(config []byte, logger Logger) error {
 
 func StopXray() {
 	coreInstance.Close()
+}
+
+// / Real ping
+func MeasureOutboundDelay(config []byte, url string) (int64, error) {
+	conf, err := serial.DecodeJSONConfig(bytes.NewReader(config))
+	if err != nil {
+		return -1, err
+	}
+	pbConfig, err := conf.Build()
+	if err != nil {
+		return -2, err
+	}
+
+	// dont listen to anything for test purpose
+	pbConfig.Inbound = nil
+	// config.App: (fakedns), log, dispatcher, InboundConfig, OutboundConfig, (stats), router, dns, (policy)
+	// keep only basic features
+	pbConfig.App = pbConfig.App[:5]
+
+	inst, err := core.New(pbConfig)
+	if err != nil {
+		return -1, err
+	}
+
+	inst.Start()
+	delay, err := measureInstDelay(context.Background(), inst, url)
+	inst.Close()
+	return delay, err
+}
+
+func measureInstDelay(ctx context.Context, inst *core.Instance, url string) (int64, error) {
+	if inst == nil {
+		return -1, errors.New("core instance nil")
+	}
+
+	tr := &http.Transport{
+		TLSHandshakeTimeout: 6 * time.Second,
+		DisableKeepAlives:   true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dest, err := xrayNet.ParseDestination(fmt.Sprintf("%s:%s", network, addr))
+			if err != nil {
+				return nil, err
+			}
+			return core.Dial(ctx, inst, dest)
+		},
+	}
+
+	c := &http.Client{
+		Transport: tr,
+		Timeout:   12 * time.Second,
+	}
+
+	if len(url) <= 0 {
+		url = "https://www.google.com/generate_204"
+	}
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	start := time.Now()
+	resp, err := c.Do(req)
+	if err != nil {
+		return -1, err
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return -1, fmt.Errorf("status != 20x: %s", resp.Status)
+	}
+	resp.Body.Close()
+	return time.Since(start).Milliseconds(), nil
 }
