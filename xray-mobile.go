@@ -18,6 +18,8 @@ import (
 	"github.com/xtls/xray-core/infra/conf/serial"
 )
 
+type CompletionHandler func(int64, error)
+
 type Logger interface {
 	LogInput(s string)
 }
@@ -83,14 +85,14 @@ func StopXray() {
 }
 
 // / Real ping
-func MeasureOutboundDelay(config []byte, url string) (int64, error) {
+func MeasureOutboundDelay(config []byte, url string, exit func(int64, error)) {
 	conf, err := serial.DecodeJSONConfig(bytes.NewReader(config))
 	if err != nil {
-		return -1, err
+		exit(-1, err)
 	}
 	pbConfig, err := conf.Build()
 	if err != nil {
-		return -2, err
+		exit(-1, err)
 	}
 
 	// dont listen to anything for test purpose
@@ -101,18 +103,19 @@ func MeasureOutboundDelay(config []byte, url string) (int64, error) {
 
 	inst, err := core.New(pbConfig)
 	if err != nil {
-		return -1, err
+		exit(-1, err)
 	}
 
 	inst.Start()
-	delay, err := measureInstDelay(context.Background(), inst, url)
-	inst.Close()
-	return delay, err
+	measureInstDelay(context.Background(), inst, url, func(res int64, err error) {
+		inst.Close()
+		exit(res, err)
+	})
 }
 
-func measureInstDelay(ctx context.Context, inst *core.Instance, url string) (int64, error) {
+func measureInstDelay(ctx context.Context, inst *core.Instance, url string, exit func(int64, error)) {
 	if inst == nil {
-		return -1, errors.New("core instance nil")
+		exit(-1, errors.New("core instance nil"))
 	}
 
 	tr := &http.Transport{
@@ -137,14 +140,17 @@ func measureInstDelay(ctx context.Context, inst *core.Instance, url string) (int
 	}
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 	start := time.Now()
-	resp, err := c.Do(req)
-	if err != nil {
-		return -1, err
-	}
+	go func() {
+		resp, err := c.Do(req)
+		if err != nil {
+			exit(-1, err)
+		}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return -1, fmt.Errorf("status != 20x: %s", resp.Status)
-	}
-	resp.Body.Close()
-	return time.Since(start).Milliseconds(), nil
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+			exit(-1, fmt.Errorf("status != 20x: %s", resp.Status))
+		}
+		resp.Body.Close()
+		exit(time.Since(start).Milliseconds(), nil)
+	}()
+
 }
