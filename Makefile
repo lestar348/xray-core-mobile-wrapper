@@ -12,6 +12,7 @@ ANDROID_ARTIFACT=$(BUILDDIR)/xray.aar
 IOS_TARGET=ios/arm64
 IOS_SIMULATOR_TARGET=iossimulator
 MACOS_TARGET=macos
+MACOSX_TARGET=maccatalyst
 
 IOS_VERSION=12.0
 ANDROID_API=24
@@ -26,6 +27,8 @@ BUILD_MACOS ="cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(MACOS
 
 BUILD_ANDROID="cd $(BUILDDIR_ANDROID) && $(GOBIND) -v -androidapi $(ANDROID_API) -ldflags='-s -w' $(IMPORT_PATH)"
 
+BUILD_ANDROID_WITH_MACOS = "cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(IOS_TARGET),$(MACOS_TARGET),$(MACOSX_TARGET) -iosversion=14 -o $(IOS_ARTIFACT) $(IMPORT_PATH)"
+
 all: ios android macos
 
 ios:
@@ -35,6 +38,10 @@ ios:
 macos:
 	mkdir -p $(BUILDDIR_MACOS)
 	eval $(BUILD_MACOS)
+
+allios:
+	mkdir -p $(BUILDDIR_MACOS)
+	eval $(BUILD_ANDROID_WITH_MACOS)
 
 android:
 	mkdir -p $(BUILDDIR_ANDROID)
