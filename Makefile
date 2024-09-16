@@ -14,7 +14,7 @@ IOS_SIMULATOR_TARGET=iossimulator
 MACOS_TARGET=macos
 MACOSX_TARGET=maccatalyst
 
-IOS_VERSION=12.0
+IOS_VERSION=14.0
 ANDROID_API=24
 # LDFLAGS='-s -w -X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn'
 LDFLAGS='-s -w -extldflags -lresolv'
@@ -27,9 +27,10 @@ BUILD_MACOS ="cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(MACOS
 
 BUILD_ANDROID="cd $(BUILDDIR_ANDROID) && $(GOBIND) -v -androidapi $(ANDROID_API) -ldflags='-s -w' $(IMPORT_PATH)"
 
-BUILD_ANDROID_WITH_MACOS = "cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(IOS_TARGET),$(MACOS_TARGET),$(MACOSX_TARGET) -iosversion=14 -o $(IOS_ARTIFACT) $(IMPORT_PATH)"
+BUILD_IOS_WITH_MACOS = "cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(IOS_TARGET),$(IOS_SIMULATOR_TARGET),$(MACOS_TARGET) -o $(IOS_ARTIFACT) $(IMPORT_PATH)"
 
-all: ios android macos
+
+all: allios android
 
 ios:
 	mkdir -p $(BUILDDIR_IOS)
@@ -40,8 +41,8 @@ macos:
 	eval $(BUILD_MACOS)
 
 allios:
-	mkdir -p $(BUILDDIR_MACOS)
-	eval $(BUILD_ANDROID_WITH_MACOS)
+	mkdir -p $(BUILDDIR_IOS)
+	eval $(BUILD_IOS_WITH_MACOS)
 
 android:
 	mkdir -p $(BUILDDIR_ANDROID)
