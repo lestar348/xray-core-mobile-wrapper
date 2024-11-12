@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -26,9 +27,18 @@ type Logger interface {
 
 var coreInstance *core.Instance
 
-func SetMemoryLimit() {
-	debug.SetGCPercent(10)
-	debug.SetMemoryLimit(30 * 1024 * 1024)
+// Sets the limit on memory consumption by a process.
+// Also set garbage collection target percentage
+func SetMemoryLimit(byteLimit int64, garbageCollectionTargetPercentage int) {
+	debug.SetGCPercent(garbageCollectionTargetPercentage)
+	debug.SetMemoryLimit(byteLimit)
+}
+
+// Removes the memory usage limit
+// and returns the garbage collector frequency to the default
+func RemoveMemoryLimit() {
+	debug.SetGCPercent(100)
+	debug.SetMemoryLimit(math.MaxInt64)
 }
 
 // Ser AssetsDirectory in Xray env
