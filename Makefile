@@ -44,7 +44,7 @@ gomobiletvos:
 	mkdir -p $(BUILDDIR)	
 	eval $(BUILD_GOMOBILE)
 
-all: gomobiletvos allapple android
+all:  clean gomobiletvos allapple 
 
 allapple:	
 	eval $(BUILD_ALL_APPLE_PLATFORMS)
