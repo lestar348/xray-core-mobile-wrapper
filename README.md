@@ -1,4 +1,4 @@
-Mobile wrapper XrayCore ( https://github.com/XTLS/Xray-core ) for ios, ios simulator, android and macos.
+Mobile wrapper XrayCore ( https://github.com/XTLS/Xray-core ) for ios, ios simulator, tvos android and macos.
 
 Build steps:
 1. Check for kernel update

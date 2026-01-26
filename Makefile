@@ -5,8 +5,9 @@ GOMOBILE_TV_OS_BRANCH = pr/jkb/add-tvos-xros-support
 BUILDDIR=$(shell pwd)/build
 BUILDDIR_GOMOBILE=$(BUILDDIR)/gomobile
 BUILDDIR_GOMOBILE_CMD=$(BUILDDIR_GOMOBILE)/cmd/gomobile
+BUILDDIR_GOBIND_CMD=$(BUILDDIR_GOMOBILE)/cmd/gobind
 
-GOMOBILE=$(BUILDDIR)/gomobile_with_tvos
+GOMOBILE=$(BUILDDIR)/gomobile_tvos
 GOBIND=$(GOMOBILE) bind
 
 BUILDDIR_IOS=$(BUILDDIR)/ios
@@ -29,7 +30,8 @@ ANDROID_API=24
 LDFLAGS='-s -w -extldflags -lresolv'
 IMPORT_PATH=github.com/lestar348/xray-core-mobile-wrapper
 
-BUILD_GOMOBILE = "cd $(BUILDDIR) && git clone $(GOMOBILE_REPO) && cd $(BUILDDIR_GOMOBILE) && git checkout $(GOMOBILE_TV_OS_BRANCH) && cd $(BUILDDIR_GOMOBILE_CMD) && go build -o $(GOMOBILE)"
+BUILD_GOMOBILE = "cd $(BUILDDIR) && git clone $(GOMOBILE_REPO) && cd $(BUILDDIR_GOMOBILE) && git checkout $(GOMOBILE_TV_OS_BRANCH) && cd $(BUILDDIR_GOMOBILE_CMD) && go build -o $(GOMOBILE) && cd $(BUILDDIR_GOBIND_CMD) && go build -o $(BUILDDIR)/gobind"
+
 
 BUILD_ANDROID="cd $(BUILDDIR_ANDROID) && $(GOBIND) -v -androidapi $(ANDROID_API) -ldflags='-s -w' $(IMPORT_PATH)"
 
@@ -37,8 +39,9 @@ BUILD_IOS="cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(IOS_TARG
 BUILD_IOS_SIMULATOR="cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(IOS_SIMULATOR_TARGET) -o $(APPLE_ARTIFACT) $(IMPORT_PATH)" 
 
 BUILD_MACOS ="cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(MACOS_TARGET) -o $(APPLE_ARTIFACT) $(IMPORT_PATH)" 
+GOBINDMANUAL=$(BUILDDIR)/gobind
 
-BUILD_ALL_APPLE_PLATFORMS = "cd $(BUILDDIR) && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(TV_OS_TARGET),$(TV_OS_SIMULATOR_TARGET),$(IOS_TARGET),$(IOS_SIMULATOR_TARGET),$(MACOS_TARGET) -o $(APPLE_ARTIFACT) $(IMPORT_PATH)"
+BUILD_ALL_APPLE_PLATFORMS = "cd $(BUILDDIR) && go get golang.org/x/mobile@latest && $(GOBIND) -a -ldflags $(LDFLAGS) -target=$(TV_OS_TARGET),$(TV_OS_SIMULATOR_TARGET),$(IOS_TARGET),$(IOS_SIMULATOR_TARGET),$(MACOS_TARGET) -o $(APPLE_ARTIFACT) $(IMPORT_PATH)"
 
 gomobiletvos:
 	mkdir -p $(BUILDDIR)	
